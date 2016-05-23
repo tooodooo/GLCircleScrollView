@@ -8,22 +8,22 @@
 
 import UIKit
 
-let TimeInterval = 2.5          //全局的时间间隔
+let TimeInterval = 4.0          //全局的时间间隔
 
 class CirCleView: UIView, UIScrollViewDelegate {
     /*********************************** Property ****************************************/
     //MARK:- Property
-
+    
     var contentScrollView: UIScrollView!
     
-    var imageArray: [UIImage!]! {
+    var imageArray: [String!]! {
         //监听图片数组的变化，如果有变化立即刷新轮转图中显示的图片
         willSet(newValue) {
             self.imageArray = newValue
         }
         /**
-        *  如果数据源改变，则需要改变scrollView、分页指示器的数量
-        */
+         *  如果数据源改变，则需要改变scrollView、分页指示器的数量
+         */
         didSet {
             contentScrollView.scrollEnabled = !(imageArray.count == 1)
             self.pageIndicator.frame = CGRectMake(self.frame.size.width - 20 * CGFloat(imageArray.count), self.frame.size.height - 30, 20 * CGFloat(imageArray.count), 20)
@@ -32,25 +32,6 @@ class CirCleView: UIView, UIScrollViewDelegate {
         }
     }
     
-    var urlImageArray: [String]? {
-        willSet(newValue) {
-            self.urlImageArray = newValue
-        }
-        
-        didSet {
-            //这里用了强制拆包，所以不要把urlImageArray设为nil
-            for urlStr in self.urlImageArray! {
-                let urlImage = NSURL(string: urlStr)
-                if urlImage == nil { break }
-                let dataImage = NSData(contentsOfURL: urlImage!)
-                if dataImage == nil { break }
-                let tempImage = UIImage(data: dataImage!)
-                if tempImage == nil { break }
-                imageArray.append(tempImage)
-            }
-        }
-    }
-
     var delegate: CirCleViewDelegate?
     
     var indexOfCurrentImage: Int!  {                // 当前显示的第几张图片
@@ -75,15 +56,15 @@ class CirCleView: UIView, UIScrollViewDelegate {
         super.init(frame: frame)
     }
     
-    convenience init(frame: CGRect, imageArray: [UIImage!]?) {
+    convenience init(frame: CGRect, imageArray: [String!]?) {
         self.init(frame: frame)
         self.imageArray = imageArray
-
+        
         // 默认显示第一张图片
         self.indexOfCurrentImage = 0
         self.setUpCircleView()
     }
-
+    
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
@@ -96,7 +77,7 @@ class CirCleView: UIView, UIScrollViewDelegate {
         contentScrollView.delegate = self
         contentScrollView.bounces = false
         contentScrollView.pagingEnabled = true
-        contentScrollView.backgroundColor = UIColor.greenColor()
+        contentScrollView.backgroundColor = UIColor.lightGrayColor()
         contentScrollView.showsHorizontalScrollIndicator = false
         contentScrollView.scrollEnabled = !(imageArray.count == 1)
         self.addSubview(contentScrollView)
@@ -109,7 +90,7 @@ class CirCleView: UIView, UIScrollViewDelegate {
         contentScrollView.addSubview(currentImageView)
         
         //添加点击事件
-        let imageTap = UITapGestureRecognizer(target: self, action: Selector("imageTapAction:"))
+        let imageTap = UITapGestureRecognizer(target: self, action: #selector(CirCleView.imageTapAction(_:)))
         currentImageView.addGestureRecognizer(imageTap)
         
         self.lastImageView = UIImageView()
@@ -135,14 +116,14 @@ class CirCleView: UIView, UIScrollViewDelegate {
         self.addSubview(pageIndicator)
         
         //设置计时器
-        self.timer = NSTimer.scheduledTimerWithTimeInterval(TimeInterval, target: self, selector: "timerAction", userInfo: nil, repeats: true)
+        self.timer = NSTimer.scheduledTimerWithTimeInterval(TimeInterval, target: self, selector: #selector(CirCleView.timerAction), userInfo: nil, repeats: true)
     }
     
     //MARK: 设置图片
     private func setScrollViewOfImage(){
-        self.currentImageView.image = self.imageArray[self.indexOfCurrentImage]
-        self.nextImageView.image = self.imageArray[self.getNextImageIndex(indexOfCurrentImage: self.indexOfCurrentImage)]
-        self.lastImageView.image = self.imageArray[self.getLastImageIndex(indexOfCurrentImage: self.indexOfCurrentImage)]
+        self.currentImageView.hnk_setImageFromURL(NSURL(string: self.imageArray[self.indexOfCurrentImage])!, placeholder: UIImage(named: "avatar_default"), format: Format.init(name: "Banner"), failure: nil, success: nil)
+        self.nextImageView.hnk_setImageFromURL(NSURL(string: self.imageArray[self.getNextImageIndex(indexOfCurrentImage: self.indexOfCurrentImage)])!, placeholder: UIImage(named: "avatar_default"), format: Format.init(name: "Banner"), failure: nil, success: nil)
+        self.lastImageView.hnk_setImageFromURL(NSURL(string: self.imageArray[self.getLastImageIndex(indexOfCurrentImage: self.indexOfCurrentImage)])!, placeholder: UIImage(named: "avatar_default"), format: Format.init(name: "Banner"), failure: nil, success: nil)
     }
     
     // 得到上一张图片的下标
@@ -164,10 +145,9 @@ class CirCleView: UIView, UIScrollViewDelegate {
     
     //事件触发方法
     func timerAction() {
-        print("timer", terminator: "")
         contentScrollView.setContentOffset(CGPointMake(self.frame.size.width*2, 0), animated: true)
     }
-
+    
     
     /********************************** Public Methods  ***************************************/
     //MARK:- Public Methods
@@ -193,7 +173,7 @@ class CirCleView: UIView, UIScrollViewDelegate {
     }
     
     func scrollViewDidEndDecelerating(scrollView: UIScrollView) {
-
+        
         let offset = scrollView.contentOffset.x
         if offset == 0 {
             self.indexOfCurrentImage = self.getLastImageIndex(indexOfCurrentImage: self.indexOfCurrentImage)
@@ -207,37 +187,27 @@ class CirCleView: UIView, UIScrollViewDelegate {
         
         //重置计时器
         if timer == nil {
-            self.timer = NSTimer.scheduledTimerWithTimeInterval(TimeInterval, target: self, selector: "timerAction", userInfo: nil, repeats: true)
+            self.timer = NSTimer.scheduledTimerWithTimeInterval(TimeInterval, target: self, selector: #selector(CirCleView.timerAction), userInfo: nil, repeats: true)
         }
     }
     
     //时间触发器 设置滑动时动画true，会触发的方法
     func scrollViewDidEndScrollingAnimation(scrollView: UIScrollView) {
-        print("animator", terminator: "")
+        
         self.scrollViewDidEndDecelerating(contentScrollView)
     }
-
+    
 }
 
 /********************************** Protocol Methods ***************************************/
-//MARK:- Protocol Methods 
+//MARK:- Protocol Methods
 
 
 @objc protocol CirCleViewDelegate {
     /**
-    *  点击图片的代理方法
-    *  
-    *  @para  currentIndxe 当前点击图片的下标
-    */
+     *  点击图片的代理方法
+     *
+     *  @para  currentIndxe 当前点击图片的下标
+     */
     optional func clickCurrentImage(currentIndxe: Int)
 }
-
-
-
-
-
-
-
-
-
-
